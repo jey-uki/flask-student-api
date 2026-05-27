@@ -285,6 +285,35 @@ def get_course(course_id):
     return jsonify({"course": course.to_dict()}), 200
 
 
+@app.route("/api/courses/<int:course_id>", methods=["PUT"])
+def update_course(course_id):
+    course = Course.query.get(course_id)
+    if not course:
+        return jsonify({"error": "Course not found."}), 404
+
+    data = request.get_json(silent=True)
+    if not data:
+        return jsonify({"error": "No data provided to update."}), 400
+
+    errors = _validate_course_payload(data, course_id=course_id)
+    if errors:
+        return jsonify({"errors": errors}), 400
+
+    try:
+        course.course_title = data.get("course_title").strip()
+        course.course_fee = float(data.get("course_fee"))
+        course.duration_months = int(data.get("duration_months"))
+        if "description" in data:
+            course.description = data.get("description")
+        if "is_available" in data:
+            course.is_available = bool(data.get("is_available"))
+        db.session.commit()
+        return jsonify({"message": "Course updated successfully.", "course": course.to_dict()}), 200
+    except Exception:
+        db.session.rollback()
+        return jsonify({"error": "An internal server error occurred."}), 500
+
+
 print("Student API starting...")
 
 if __name__ == "__main__":
