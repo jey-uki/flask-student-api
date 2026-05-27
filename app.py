@@ -1,5 +1,9 @@
 # student-api — Flask + MySQL CRUD (Activity-06)
-from datetime import datetime
+from datetime import datetime, timezone
+
+
+def _utc_now():
+    return datetime.now(timezone.utc)
 
 from flask import Flask, jsonify, request
 from flask_sqlalchemy import SQLAlchemy
@@ -25,7 +29,7 @@ class Student(db.Model):
     cgpa = db.Column(db.Float, default=0.0)
     is_active = db.Column(db.Boolean, default=True)
     joined_date = db.Column(db.Date, nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=_utc_now)
 
     def to_dict(self):
         return {
@@ -49,7 +53,7 @@ class Course(db.Model):
     duration_months = db.Column(db.Integer, nullable=False)
     description = db.Column(db.Text, nullable=True)
     is_available = db.Column(db.Boolean, default=True)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=_utc_now)
 
     def to_dict(self):
         return {
