@@ -271,6 +271,12 @@ def create_course():
         return jsonify({"error": "An internal server error occurred."}), 500
 
 
+@app.route("/api/courses", methods=["GET"])
+def get_courses():
+    courses = Course.query.all()
+    return jsonify({"courses": [c.to_dict() for c in courses]}), 200
+
+
 print("Student API starting...")
 
 if __name__ == "__main__":
