@@ -143,6 +143,12 @@ def create_student():
         return jsonify({"error": "An internal server error occurred."}), 500
 
 
+@app.route("/api/students", methods=["GET"])
+def get_students():
+    students = Student.query.all()
+    return jsonify({"students": [s.to_dict() for s in students]}), 200
+
+
 print("Student API starting...")
 
 if __name__ == "__main__":
