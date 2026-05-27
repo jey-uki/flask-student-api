@@ -277,6 +277,14 @@ def get_courses():
     return jsonify({"courses": [c.to_dict() for c in courses]}), 200
 
 
+@app.route("/api/courses/<int:course_id>", methods=["GET"])
+def get_course(course_id):
+    course = Course.query.get(course_id)
+    if not course:
+        return jsonify({"error": "Course not found."}), 404
+    return jsonify({"course": course.to_dict()}), 200
+
+
 print("Student API starting...")
 
 if __name__ == "__main__":
