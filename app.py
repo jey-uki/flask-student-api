@@ -205,6 +205,72 @@ def delete_student(student_id):
         return jsonify({"error": "An internal server error occurred."}), 500
 
 
+def _validate_course_payload(data, course_id=None):
+    errors = []
+    if not data:
+        return ["Request body is required."]
+
+    title = data.get("course_title")
+    if title is None or str(title).strip() == "":
+        errors.append("course_title is required.")
+    elif str(title).strip():
+        q = Course.query.filter(Course.course_title == str(title).strip())
+        if course_id:
+            q = q.filter(Course.id != course_id)
+        if q.first():
+            errors.append("Course title already exists.")
+
+    fee = data.get("course_fee")
+    if fee is None:
+        errors.append("course_fee is required.")
+    else:
+        try:
+            fee_val = float(fee)
+            if fee_val <= 0:
+                errors.append("course_fee must be a positive number.")
+        except (TypeError, ValueError):
+            errors.append("course_fee must be a positive number.")
+
+    duration = data.get("duration_months")
+    if duration is None:
+        errors.append("duration_months is required.")
+    else:
+        try:
+            dur_val = int(duration)
+            if dur_val <= 0:
+                errors.append("duration_months must be a positive integer.")
+        except (TypeError, ValueError):
+            errors.append("duration_months must be a positive integer.")
+
+    return errors
+
+
+@app.route("/api/courses", methods=["POST"])
+def create_course():
+    data = request.get_json(silent=True)
+    if not data:
+        return jsonify({"error": "Request body is required."}), 400
+
+    errors = _validate_course_payload(data)
+    if errors:
+        return jsonify({"errors": errors}), 400
+
+    try:
+        course = Course(
+            course_title=data.get("course_title").strip(),
+            course_fee=float(data.get("course_fee")),
+            duration_months=int(data.get("duration_months")),
+            description=data.get("description"),
+            is_available=data.get("is_available", True),
+        )
+        db.session.add(course)
+        db.session.commit()
+        return jsonify({"message": "Course created successfully.", "course": course.to_dict()}), 201
+    except Exception:
+        db.session.rollback()
+        return jsonify({"error": "An internal server error occurred."}), 500
+
+
 print("Student API starting...")
 
 if __name__ == "__main__":
