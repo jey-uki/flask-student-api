@@ -157,6 +157,40 @@ def get_student(student_id):
     return jsonify({"student": student.to_dict()}), 200
 
 
+@app.route("/api/students/<int:student_id>", methods=["PUT"])
+def update_student(student_id):
+    student = Student.query.get(student_id)
+    if not student:
+        return jsonify({"error": "Student not found."}), 404
+
+    data = request.get_json(silent=True)
+    if not data:
+        return jsonify({"error": "No data provided to update."}), 400
+
+    errors = _validate_student_payload(data, student_id=student_id)
+    if errors:
+        return jsonify({"errors": errors}), 400
+
+    joined_date, date_err = _parse_joined_date(data.get("joined_date"))
+    if date_err:
+        return jsonify({"error": date_err}), 400
+
+    try:
+        student.full_name = data.get("full_name").strip()
+        student.email = data.get("email").strip()
+        student.age = int(data.get("age"))
+        if "cgpa" in data:
+            student.cgpa = float(data.get("cgpa"))
+        if "is_active" in data:
+            student.is_active = bool(data.get("is_active"))
+        student.joined_date = joined_date
+        db.session.commit()
+        return jsonify({"message": "Student updated successfully.", "student": student.to_dict()}), 200
+    except Exception:
+        db.session.rollback()
+        return jsonify({"error": "An internal server error occurred."}), 500
+
+
 print("Student API starting...")
 
 if __name__ == "__main__":
