@@ -15,7 +15,7 @@ def create_app():
 
     register_blueprints(app)
     
-    @app.route("/api", methods=["GET"])
+    @app.route("/", methods=["GET"])
     def api_home():
         return jsonify({
             "message": "Student Management API",
