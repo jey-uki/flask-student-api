@@ -14,6 +14,17 @@ def create_app():
     from app.models import Course, Student  # noqa: F401
 
     register_blueprints(app)
+    
+    @app.route("/api", methods=["GET"])
+    def api_home():
+        return jsonify({
+            "message": "Student Management API",
+            "version": "1.0",
+            "endpoints": {
+                "students": "/api/students",
+                "courses": "/api/courses"
+            }
+        })
 
     @app.errorhandler(OperationalError)
     def handle_operational_error(err):
