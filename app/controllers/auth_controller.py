@@ -57,8 +57,12 @@ def register():
         return jsonify({"errors": errors}), 400
 
     try:
-        user = User(email=str(data.get("email")).strip())
+        user = User(
+            email=str(data.get("email")).strip(),
+            role="student"  # Force default role and ignore any payload input
+        )
         user.set_password(str(data.get("password")))
+
         
         db.session.add(user)
         db.session.commit()

@@ -14,6 +14,13 @@ def create_app():
 
     from app.models import Course, Student, User  # noqa: F401
 
+    @jwt.user_lookup_loader
+    def user_lookup_callback(_jwt_header, jwt_data):
+        identity = jwt_data["sub"]
+        return db.session.get(User, int(identity))
+
+
+
     register_blueprints(app)
     
     @app.route("/", methods=["GET"])
