@@ -1,7 +1,7 @@
 from flask import Flask, jsonify
 
 from app.config import Config
-from app.extensions import db
+from app.extensions import db, jwt
 from app.routes import register_blueprints
 from sqlalchemy.exc import OperationalError, ProgrammingError
 
@@ -10,8 +10,9 @@ def create_app():
     app = Flask(__name__)
     app.config.from_object(Config)
     db.init_app(app)
+    jwt.init_app(app)
 
-    from app.models import Course, Student  # noqa: F401
+    from app.models import Course, Student, User  # noqa: F401
 
     register_blueprints(app)
     
@@ -22,9 +23,14 @@ def create_app():
             "version": "1.0",
             "endpoints": {
                 "students": "/api/students",
-                "courses": "/api/courses"
+                "courses": "/api/courses",
+                "auth": {
+                    "register": "/api/auth/register",
+                    "login": "/api/auth/login"
+                }
             }
         })
+
 
     @app.errorhandler(OperationalError)
     def handle_operational_error(err):
