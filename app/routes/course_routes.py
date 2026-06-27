@@ -36,3 +36,15 @@ def delete_course(course_id):
     return ctrl.delete_course(course_id)
 
 
+@course_bp.route("/export", methods=["GET"])
+@roles_required("admin", "lecturer")
+def export_courses():
+    return ctrl.export_courses()
+
+
+@course_bp.route("/import", methods=["POST"])
+@roles_required("admin", "lecturer")
+def import_courses():
+    return ctrl.import_courses()
+
+

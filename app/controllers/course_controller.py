@@ -1,7 +1,25 @@
-from flask import jsonify, request
+from flask import jsonify, request, send_file
 
+from app.export_utils import build_export_file, parse_csv_upload
 from app.extensions import db
 from app.models.course_model import Course
+
+COURSE_EXPORT_HEADERS = [
+    "id",
+    "course_title",
+    "course_fee",
+    "duration_months",
+    "description",
+    "is_available",
+    "created_at",
+]
+COURSE_IMPORT_HEADERS = [
+    "course_title",
+    "course_fee",
+    "duration_months",
+    "description",
+    "is_available",
+]
 
 
 def _validate_course_payload(data, course_id=None):
@@ -120,3 +138,98 @@ def delete_course(course_id):
     except Exception:
         db.session.rollback()
         return jsonify({"error": "An internal server error occurred."}), 500
+
+
+def _parse_bool(value, default=True):
+    if value is None or str(value).strip() == "":
+        return default
+    return str(value).strip().lower() in ("1", "true", "yes", "y")
+
+
+def export_courses():
+    format_type = request.args.get("format", "csv")
+    courses = Course.query.order_by(Course.id).all()
+    rows = [
+        {
+            "id": c.id,
+            "course_title": c.course_title,
+            "course_fee": c.course_fee,
+            "duration_months": c.duration_months,
+            "description": c.description or "",
+            "is_available": c.is_available,
+            "created_at": c.created_at.isoformat() if c.created_at else "",
+        }
+        for c in courses
+    ]
+    try:
+        buffer, filename, mimetype = build_export_file(
+            format_type,
+            "Course Directory",
+            COURSE_EXPORT_HEADERS,
+            rows,
+            "courses",
+        )
+    except ValueError as exc:
+        return jsonify({"error": str(exc)}), 400
+
+    return send_file(buffer, mimetype=mimetype, as_attachment=True, download_name=filename)
+
+
+def import_courses():
+    if "file" not in request.files:
+        return jsonify({"error": "CSV file is required. Use form field 'file'."}), 400
+
+    file_storage = request.files["file"]
+    if not file_storage.filename:
+        return jsonify({"error": "No file selected."}), 400
+    if not file_storage.filename.lower().endswith(".csv"):
+        return jsonify({"error": "Only CSV files are supported."}), 400
+
+    rows, parse_error = parse_csv_upload(file_storage)
+    if parse_error:
+        return jsonify({"error": parse_error}), 400
+
+    created = 0
+    skipped = 0
+    row_errors = []
+
+    for row in rows:
+        row_num = row.get("_row")
+        payload = {key: row.get(key) for key in COURSE_IMPORT_HEADERS}
+
+        errors = _validate_course_payload(payload)
+        if errors:
+            row_errors.append({"row": row_num, "errors": errors})
+            skipped += 1
+            continue
+
+        try:
+            with db.session.begin_nested():
+                course = Course(
+                    course_title=str(payload.get("course_title")).strip(),
+                    course_fee=float(payload.get("course_fee")),
+                    duration_months=int(payload.get("duration_months")),
+                    description=payload.get("description") or None,
+                    is_available=_parse_bool(payload.get("is_available"), default=True),
+                )
+                db.session.add(course)
+                db.session.flush()
+            created += 1
+        except Exception:
+            row_errors.append({"row": row_num, "errors": ["Failed to save row (duplicate title or invalid data)."]})
+            skipped += 1
+
+    try:
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        return jsonify({"error": "An internal server error occurred during import."}), 500
+
+    return jsonify(
+        {
+            "message": f"Import completed. {created} created, {skipped} skipped.",
+            "created": created,
+            "skipped": skipped,
+            "errors": row_errors,
+        }
+    ), 200

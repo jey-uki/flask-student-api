@@ -36,3 +36,15 @@ def delete_student(student_id):
     return ctrl.delete_student(student_id)
 
 
+@student_bp.route("/export", methods=["GET"])
+@roles_required("admin", "lecturer")
+def export_students():
+    return ctrl.export_students()
+
+
+@student_bp.route("/import", methods=["POST"])
+@roles_required("admin")
+def import_students():
+    return ctrl.import_students()
+
+
